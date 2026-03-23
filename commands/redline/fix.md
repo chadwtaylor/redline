@@ -33,7 +33,7 @@ Fix all open redlines:
 ## Process
 
 For each redline:
-1. Read the feedback
+1. Read the feedback. If `screenshot_path` exists, read the screenshot image for visual context.
 2. Find the component file using the element_selector (grep for `data-testid` or the CSS path)
 3. Read the relevant code
 4. Apply the fix

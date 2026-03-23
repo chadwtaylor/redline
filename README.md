@@ -67,13 +67,14 @@ This route reads and writes `.redlines.json` in the project root. See `component
 
 ### 5. Gitignore
 
-Add `.redlines.json` to your project's `.gitignore`:
+Add these to your project's `.gitignore`:
 
 ```
 .redlines.json
+redline/screenshots/
 ```
 
-Redlines are dev-only feedback and should not be committed.
+Redlines and screenshots are dev-only feedback and should not be committed.
 
 ## Commands
 

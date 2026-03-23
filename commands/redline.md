@@ -22,7 +22,9 @@ Route to the appropriate redline subcommand based on the argument:
 
 Storage: `.redlines.json` in the project root — a JSON array of redline objects.
 
-Each redline object has: `id`, `page_url`, `element_selector`, `element_text`, `feedback`, `status` (open|fixed|dismissed|deferred), `created_at`.
+Each redline object has: `id`, `page_url`, `element_selector`, `element_text`, `feedback`, `screenshot_path`, `status` (open|fixed|dismissed|deferred), `created_at`.
+
+Screenshots are stored in `redline/screenshots/` in the project root. When a redline has a screenshot, `screenshot_path` points to it (e.g., `redline/screenshots/{id}.png`). Read the screenshot when fixing to understand the visual context.
 
 If the argument is `check` or empty, read and summarize open redlines.
 If the argument is `fix`, find and fix each open redline in the codebase, then mark as fixed.

@@ -1,11 +1,13 @@
 // Example: app/api/redlines/route.ts (Next.js App Router)
 // Reads and writes .redlines.json in the project root
+// Screenshots saved to redline/screenshots/
 
-import { readFile, writeFile } from 'fs/promises'
+import { readFile, writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { randomUUID } from 'crypto'
 
 const REDLINES_PATH = join(process.cwd(), '.redlines.json')
+const SCREENSHOTS_DIR = join(process.cwd(), 'redline', 'screenshots')
 
 async function getRedlines() {
   try {
@@ -27,6 +29,46 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const contentType = req.headers.get('content-type') ?? ''
+
+  // Handle multipart form data (with screenshot)
+  if (contentType.includes('multipart/form-data')) {
+    const formData = await req.formData()
+    const feedback = formData.get('feedback') as string
+    const pageUrl = formData.get('page_url') as string
+    const elementSelector = formData.get('element_selector') as string
+    const elementText = (formData.get('element_text') as string) || null
+    const screenshot = formData.get('screenshot') as File | null
+
+    const id = randomUUID()
+    let screenshotPath: string | null = null
+
+    if (screenshot) {
+      await mkdir(SCREENSHOTS_DIR, { recursive: true })
+      const ext = screenshot.type === 'image/png' ? '.png' : '.jpg'
+      const filename = `${id}${ext}`
+      screenshotPath = `redline/screenshots/${filename}`
+      const buffer = Buffer.from(await screenshot.arrayBuffer())
+      await writeFile(join(SCREENSHOTS_DIR, filename), buffer)
+    }
+
+    const redlines = await getRedlines()
+    const newRedline = {
+      id,
+      page_url: pageUrl,
+      element_selector: elementSelector,
+      element_text: elementText,
+      feedback,
+      screenshot_path: screenshotPath,
+      status: 'open',
+      created_at: new Date().toISOString(),
+    }
+    redlines.push(newRedline)
+    await saveRedlines(redlines)
+    return Response.json(newRedline, { status: 201 })
+  }
+
+  // Handle JSON body (no screenshot)
   const body = await req.json()
   const redlines = await getRedlines()
   const newRedline = {
@@ -35,6 +77,7 @@ export async function POST(req: Request) {
     element_selector: body.element_selector,
     element_text: body.element_text || null,
     feedback: body.feedback,
+    screenshot_path: null,
     status: 'open',
     created_at: new Date().toISOString(),
   }
