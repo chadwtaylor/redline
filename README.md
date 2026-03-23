@@ -4,7 +4,7 @@ In-app dev feedback for AI-assisted development. Mark UI issues directly in your
 
 ## What It Does
 
-1. **Mark issues in-browser** — Triple-tap `r` to activate the inspector. Click any element, type your feedback, submit. It's saved to your Supabase `redlines` table.
+1. **Mark issues in-browser** — Triple-tap `r` to activate the inspector. Click any element, type your feedback, submit. It's saved to `.redlines.json` in your project root.
 
 2. **Fix with Claude** — Run `/redline:fix` and Claude reads every open redline, finds the component, applies the fix, runs a UX review, and marks it done.
 
@@ -12,21 +12,9 @@ In-app dev feedback for AI-assisted development. Mark UI issues directly in your
 
 ## Installation
 
-### 1. Database
+No database required. Redlines are stored in a flat JSON file.
 
-Apply the migration to your Supabase project:
-
-```bash
-# Copy to your migrations directory
-cp db/redlines.sql supabase/migrations/$(date +%Y%m%d%H%M%S)_redlines.sql
-
-# Apply
-supabase db reset
-# or
-supabase db push
-```
-
-### 2. Claude Commands
+### 1. Claude Commands
 
 Copy the commands to your Claude Code commands directory:
 
@@ -40,7 +28,7 @@ cp -r commands/redline ~/.claude/commands/
 cp commands/redline.md ~/.claude/commands/
 ```
 
-### 3. Laws of UX Reference
+### 2. Laws of UX Reference
 
 Copy the reference doc so the UX review has full context:
 
@@ -49,9 +37,9 @@ mkdir -p ~/.claude/docs
 cp docs/LAWS_OF_UX.md ~/.claude/docs/
 ```
 
-### 4. Browser Component
+### 3. Browser Component (Optional)
 
-The `component/` directory contains a React sidebar component for Next.js + Supabase apps. Adapt it to your stack:
+The `component/` directory contains a React sidebar component for Next.js apps. It communicates with a local API route that reads/writes `.redlines.json`.
 
 ```tsx
 import { RedlineSidebar } from '@/components/redline-sidebar'
@@ -61,40 +49,41 @@ import { RedlineSidebar } from '@/components/redline-sidebar'
 ```
 
 The component uses:
-- `@supabase/supabase-js` browser client for reading/writing redlines
+- `fetch('/api/redlines')` to read/write redlines (no database client needed)
 - Lucide React for icons
 - Next.js `useRouter` for navigation
 - Tailwind CSS for styling
 
-Adapt the Supabase client import to match your project.
+### 4. API Route (Required for Browser Component)
 
-### 5. DB Reset Preservation (Optional)
-
-If you use `supabase db reset` frequently, wrap it to preserve redlines:
+Copy the example API route into your Next.js app:
 
 ```bash
-cp scripts/db-reset.sh scripts/
-chmod +x scripts/db-reset.sh
+mkdir -p app/api/redlines
+cp component/api-route-example.ts app/api/redlines/route.ts
 ```
 
-Then in `package.json`:
-```json
-{
-  "scripts": {
-    "db:reset": "./scripts/db-reset.sh"
-  }
-}
+This route reads and writes `.redlines.json` in the project root. See `component/api-route-example.ts` for the full implementation.
+
+### 5. Gitignore
+
+Add `.redlines.json` to your project's `.gitignore`:
+
 ```
+.redlines.json
+```
+
+Redlines are dev-only feedback and should not be committed.
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `/redline` | Router — defaults to check, accepts `check`, `fix`, `clear` |
-| `/redline:check` | Query open redlines and summarize |
+| `/redline` | Router — defaults to check, accepts `check`, `fix`, `clear`, `defer`, `ux-review` |
+| `/redline:check` | Read open redlines and summarize |
 | `/redline:fix` | Find and fix each open redline in the codebase |
 | `/redline:fix <uuid>` | Fix a specific redline by ID (even if deferred) |
-| `/redline:clear` | Delete all redlines from the database |
+| `/redline:clear` | Clear all redlines from `.redlines.json` |
 | `/redline:defer <n>` | Defer redline #n, or `list` to see deferred, or `undo n` |
 | `/redline:ux-review` | Run a Laws of UX audit on changed components |
 
@@ -108,9 +97,9 @@ Six checks: Is it pitch ready? Will SJ fire us? What questions will he ask? What
 
 ## Stack Requirements
 
-- **Database:** Supabase (Postgres)
 - **AI:** Claude Code (CLI)
 - **Frontend:** Any (React component provided as reference)
+- **Storage:** Flat file (`.redlines.json`)
 
 ## License
 

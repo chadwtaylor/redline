@@ -1,3 +1,4 @@
 node_modules/
 .redlines-backup.json
+.redlines.json
 .DS_Store

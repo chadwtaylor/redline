@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Crosshair, ExternalLink } from 'lucide-react'
-import { createBrowserClient } from '@terp-tools/db'
 
 interface RedlineRow {
   id: string
@@ -18,26 +17,27 @@ interface RedlineRow {
 interface RedlineSidebarProps {
   isActive: boolean
   onToggle: () => void
+  /** Base URL for the redlines API. Defaults to '/api/redlines' */
+  apiUrl?: string
 }
 
-export function RedlineSidebar({ isActive, onToggle }: RedlineSidebarProps) {
+export function RedlineSidebar({ isActive, onToggle, apiUrl = '/api/redlines' }: RedlineSidebarProps) {
   const router = useRouter()
   const [showList, setShowList] = useState(false)
   const [redlines, setRedlines] = useState<RedlineRow[]>([])
   const [count, setCount] = useState(0)
 
   const fetchRedlines = useCallback(async () => {
-    const supabase = createBrowserClient()
-    const { data, count: total } = await supabase
-      .from('redlines')
-      .select('*', { count: 'exact' })
-      .eq('status', 'open')
-      .order('created_at', { ascending: false })
-      .limit(20)
-
-    setRedlines((data ?? []) as RedlineRow[])
-    setCount(total ?? 0)
-  }, [])
+    try {
+      const res = await fetch(apiUrl)
+      if (!res.ok) return
+      const json = await res.json()
+      setRedlines(json.data ?? [])
+      setCount(json.count ?? 0)
+    } catch {
+      // API not available — silently degrade
+    }
+  }, [apiUrl])
 
   // Fetch on mount and after submissions
   useEffect(() => {

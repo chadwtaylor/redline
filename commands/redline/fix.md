@@ -12,27 +12,23 @@ allowed-tools:
   - Agent
 ---
 
-Fix redlines from the local Supabase.
-
-Connection: `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres`
+Fix redlines stored in `.redlines.json` in the project root.
 
 ## If a UUID argument is provided
 
 Fix a specific redline by ID (works for open OR deferred):
 
-```sql
-SELECT id, page_url, element_selector, element_text, feedback, created_at
-FROM redlines WHERE id = '{uuid}';
-```
+1. Read `.redlines.json`
+2. Find the entry where `id` matches the provided UUID
+3. If not found, report "No redline found with that ID"
 
 ## If no argument
 
 Fix all open redlines:
 
-```sql
-SELECT id, page_url, element_selector, element_text, feedback, created_at
-FROM redlines WHERE status = 'open' ORDER BY created_at;
-```
+1. Read `.redlines.json`
+2. Filter to entries where `status === 'open'`
+3. Sort by `created_at` ascending
 
 ## Process
 
@@ -42,10 +38,7 @@ For each redline:
 3. Read the relevant code
 4. Apply the fix
 5. Run `/redline:ux-review` on the changed component to validate against Laws of UX — adjust the fix if the review flags issues
-6. Mark as fixed:
-```sql
-UPDATE redlines SET status = 'fixed' WHERE id = '{id}';
-```
+6. Mark as fixed: read `.redlines.json`, update the matching entry's `status` to `'fixed'`, write the file back
 
 After all fixes, report what was done.
 

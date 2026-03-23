@@ -1,17 +1,17 @@
 ---
 name: redline:clear
-description: Clear all redlines (open, fixed, dismissed) from the database
+description: Clear all redlines (open, fixed, dismissed, deferred) from the file
 allowed-tools:
-  - Bash
+  - Read
+  - Write
 ---
 
-Delete all redlines regardless of status.
+Clear all redlines regardless of status.
 
-Connection: `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres`
+## Process
 
-Run:
-```sql
-DELETE FROM redlines;
-```
+1. Read `.redlines.json` to count existing entries
+2. Write an empty array `[]` to `.redlines.json`
+3. Report the count cleared (e.g., "Cleared 5 redlines")
 
-Report the count deleted.
+If the file doesn't exist or is already empty, report "No redlines to clear".

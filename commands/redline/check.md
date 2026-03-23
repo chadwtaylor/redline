@@ -2,23 +2,25 @@
 name: redline:check
 description: Check open redlines (in-app dev feedback) and summarize what needs attention
 allowed-tools:
-  - Bash
+  - Read
 ---
 
-Query all open redlines from the local Supabase and present a summary.
+Query all open redlines from `.redlines.json` in the project root and present a summary.
 
-Connection: `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres`
+## Process
 
-Run this query:
-```sql
-SELECT id, page_url, element_selector, element_text, feedback, created_at
-FROM redlines WHERE status = 'open' ORDER BY created_at;
-```
+1. Read `.redlines.json` from the project root using the Read tool
+2. Parse the JSON array
+3. Filter to entries where `status === 'open'`
+4. Sort by `created_at` ascending
 
-For each redline, show:
-1. Page URL
-2. Element selector
-3. Feedback text
-4. When it was left
+For each open redline, show:
+1. Number (row position in the open list, for use with `/redline:defer`)
+2. Page URL
+3. Element selector
+4. Feedback text
+5. When it was left
 
 End with a count: "X open redlines"
+
+If the file doesn't exist or is empty, report "0 open redlines".
