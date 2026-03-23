@@ -5,11 +5,11 @@ allowed-tools:
   - Read
 ---
 
-Query all open redlines from `.redlines.json` in the project root and present a summary.
+Query all open redlines from `redline/feedback.json` in the project root and present a summary.
 
 ## Process
 
-1. Read `.redlines.json` from the project root using the Read tool
+1. Read `redline/feedback.json` from the project root using the Read tool
 2. Parse the JSON array
 3. Filter to entries where `status === 'open'`
 4. Sort by `created_at` ascending

@@ -20,7 +20,7 @@ Route to the appropriate redline subcommand based on the argument:
 - `defer` → run `/redline:defer`
 - `ux-review` → run `/redline:ux-review`
 
-Storage: `.redlines.json` in the project root — a JSON array of redline objects.
+Storage: `redline/feedback.json` in the project root — a JSON array of redline objects.
 
 Each redline object has: `id`, `page_url`, `element_selector`, `element_text`, `feedback`, `screenshot_path`, `status` (open|fixed|dismissed|deferred), `created_at`.
 
@@ -28,6 +28,6 @@ Screenshots are stored in `redline/screenshots/` in the project root. When a red
 
 If the argument is `check` or empty, read and summarize open redlines.
 If the argument is `fix`, find and fix each open redline in the codebase, then mark as fixed.
-If the argument is `clear`, write an empty array to `.redlines.json`.
+If the argument is `clear`, write an empty array to `redline/feedback.json`.
 If the argument is `defer`, defer/list/undo deferred redlines.
 If the argument is `ux-review`, run a Laws of UX audit on the specified component or recent changes.

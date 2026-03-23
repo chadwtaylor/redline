@@ -1,12 +1,12 @@
 // Example: app/api/redlines/route.ts (Next.js App Router)
-// Reads and writes .redlines.json in the project root
+// Reads and writes redline/feedback.json in the project root
 // Screenshots saved to redline/screenshots/
 
 import { readFile, writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { randomUUID } from 'crypto'
 
-const REDLINES_PATH = join(process.cwd(), '.redlines.json')
+const REDLINES_PATH = join(process.cwd(), 'redline/feedback.json')
 const SCREENSHOTS_DIR = join(process.cwd(), 'redline', 'screenshots')
 
 async function getRedlines() {

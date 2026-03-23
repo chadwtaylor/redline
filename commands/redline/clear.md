@@ -10,8 +10,8 @@ Clear all redlines regardless of status.
 
 ## Process
 
-1. Read `.redlines.json` to count existing entries
-2. Write an empty array `[]` to `.redlines.json`
+1. Read `redline/feedback.json` to count existing entries
+2. Write an empty array `[]` to `redline/feedback.json`
 3. Report the count cleared (e.g., "Cleared 5 redlines")
 
 If the file doesn't exist or is already empty, report "No redlines to clear".

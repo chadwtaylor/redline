@@ -4,7 +4,7 @@ In-app dev feedback for AI-assisted development. Mark UI issues directly in your
 
 ## What It Does
 
-1. **Mark issues in-browser** — Triple-tap `r` to activate the inspector. Click any element, type your feedback, submit. It's saved to `.redlines.json` in your project root.
+1. **Mark issues in-browser** — Triple-tap `r` to activate the inspector. Click any element, type your feedback, submit. It's saved to `redline/feedback.json` in your project root.
 
 2. **Fix with Claude** — Run `/redline:fix` and Claude reads every open redline, finds the component, applies the fix, runs a UX review, and marks it done.
 
@@ -39,7 +39,7 @@ cp docs/LAWS_OF_UX.md ~/.claude/docs/
 
 ### 3. Browser Component (Optional)
 
-The `component/` directory contains a React sidebar component for Next.js apps. It communicates with a local API route that reads/writes `.redlines.json`.
+The `component/` directory contains a React sidebar component for Next.js apps. It communicates with a local API route that reads/writes `redline/feedback.json`.
 
 ```tsx
 import { RedlineSidebar } from '@/components/redline-sidebar'
@@ -63,14 +63,14 @@ mkdir -p app/api/redlines
 cp component/api-route-example.ts app/api/redlines/route.ts
 ```
 
-This route reads and writes `.redlines.json` in the project root. See `component/api-route-example.ts` for the full implementation.
+This route reads and writes `redline/feedback.json` in the project root. See `component/api-route-example.ts` for the full implementation.
 
 ### 5. Gitignore
 
 Add these to your project's `.gitignore`:
 
 ```
-.redlines.json
+redline/feedback.json
 redline/screenshots/
 ```
 
@@ -84,7 +84,7 @@ Redlines and screenshots are dev-only feedback and should not be committed.
 | `/redline:check` | Read open redlines and summarize |
 | `/redline:fix` | Find and fix each open redline in the codebase |
 | `/redline:fix <uuid>` | Fix a specific redline by ID (even if deferred) |
-| `/redline:clear` | Clear all redlines from `.redlines.json` |
+| `/redline:clear` | Clear all redlines from `redline/feedback.json` |
 | `/redline:defer <n>` | Defer redline #n, or `list` to see deferred, or `undo n` |
 | `/redline:ux-review` | Run a Laws of UX audit on changed components |
 
@@ -100,7 +100,7 @@ Six checks: Is it pitch ready? Will SJ fire us? What questions will he ask? What
 
 - **AI:** Claude Code (CLI)
 - **Frontend:** Any (React component provided as reference)
-- **Storage:** Flat file (`.redlines.json`)
+- **Storage:** Flat file (`redline/feedback.json`)
 
 ## License
 
