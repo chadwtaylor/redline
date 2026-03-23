@@ -1,6 +1,8 @@
 # Redline
 
-**Mark it. Fix it. Ship it.**
+**Your UX Feedback Loop Champion**
+
+![Redline in action](assets/redline-screenshot.png)
 
 In-app dev feedback for AI-assisted development. No database — just a JSON file.
 
