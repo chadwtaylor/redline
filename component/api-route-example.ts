@@ -5,9 +5,21 @@
 import { readFile, writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { randomUUID } from 'crypto'
+import { execSync } from 'child_process'
 
-const REDLINES_PATH = join(process.cwd(), 'redline/feedback.json')
-const SCREENSHOTS_DIR = join(process.cwd(), 'redline', 'screenshots')
+// Find project root (git root) — important for monorepos where cwd is a subdirectory
+function getProjectRoot(): string {
+  try {
+    return execSync('git rev-parse --show-toplevel', { encoding: 'utf-8' }).trim()
+  } catch {
+    return process.cwd()
+  }
+}
+
+const PROJECT_ROOT = getProjectRoot()
+const REDLINES_DIR = join(PROJECT_ROOT, 'redline')
+const REDLINES_PATH = join(REDLINES_DIR, 'feedback.json')
+const SCREENSHOTS_DIR = join(REDLINES_DIR, 'screenshots')
 
 async function getRedlines() {
   try {
@@ -19,6 +31,7 @@ async function getRedlines() {
 }
 
 async function saveRedlines(redlines: any[]) {
+  await mkdir(REDLINES_DIR, { recursive: true })
   await writeFile(REDLINES_PATH, JSON.stringify(redlines, null, 2))
 }
 
