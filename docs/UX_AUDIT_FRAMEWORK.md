@@ -1,7 +1,5 @@
 # UX Audit Framework
 
-> Inspired by the work of Jon Yablonski (lawsofux.com). Law names are established academic/psychological principles.
-
 55 audit checks: 29 UX Theory + 7 Interaction Principles + 9 Psychology Concepts + 9 UX Methods + 1 Steve Jobs Pitch.
 
 ---

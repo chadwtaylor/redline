@@ -88,7 +88,4 @@ mkdir -p redline
 
 ---
 
-## Credits
-
-- UX Audit Framework inspired by Jon Yablonski ([lawsofux.com](https://lawsofux.com))
-- MIT License
+MIT License
