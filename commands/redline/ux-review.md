@@ -1,6 +1,6 @@
 ---
 name: redline:ux-review
-description: Run a Laws of UX audit (55 laws including the Steve Jobs Pitch) on a component, page, or recent changes. Produces a structured report with violations, flags, and passes.
+description: Run a UX Audit Framework review (55 principles including the Steve Jobs Pitch) on a component, page, or recent changes. Produces a structured report with violations, flags, and passes.
 argument-hint: "[component path or description]"
 allowed-tools:
   - Bash
@@ -10,11 +10,11 @@ allowed-tools:
   - Agent
 ---
 
-# UX Review — Laws of UX Audit
+# UX Review — UX Audit Framework
 
-Structured review of UI/UX work against the complete Laws of UX (Jon Yablonski, 54 entries) plus the Steve Jobs Pitch (#55). Produces actionable findings, not vague praise.
+Structured review of UI/UX work against the complete UX Audit Framework (54 established principles) plus the Steve Jobs Pitch (#55). Produces actionable findings, not vague praise.
 
-Full reference: `~/.claude/docs/LAWS_OF_UX.md`
+Full reference: `~/.claude/docs/UX_AUDIT_FRAMEWORK.md`
 
 ## What to Review
 
@@ -28,7 +28,7 @@ Read the relevant component/page files. If reviewing a live page, use browser to
 
 ### 2. Evaluate Against All Applicable Laws
 
-Score each applicable law: **Pass**, **Flag** (minor concern), **Violation** (needs fixing). Read `~/.claude/docs/LAWS_OF_UX.md` for full details on any law you're uncertain about.
+Score each applicable law: **Pass**, **Flag** (minor concern), **Violation** (needs fixing). Read `~/.claude/docs/UX_AUDIT_FRAMEWORK.md` for full details on any law you're uncertain about.
 
 #### UX Theory (29 laws)
 
@@ -167,4 +167,4 @@ This is the capstone law. Evaluate AFTER all other laws. Imagine you're demoing 
 - **Reference the file.** Include `file_path:line_number` for code-level findings.
 - **Propose fixes.** Every violation includes a concrete recommendation.
 - **Recommend methods.** When a UX Method would help validate a decision, suggest it.
-- **Read the full reference** (`~/.claude/docs/LAWS_OF_UX.md`) for any law you need deeper context on before scoring.
+- **Read the full reference** (`~/.claude/docs/UX_AUDIT_FRAMEWORK.md`) for any law you need deeper context on before scoring.

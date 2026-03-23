@@ -2,7 +2,7 @@
 
 **Mark it. Fix it. Ship it.**
 
-In-browser dev feedback that Claude fixes autonomously. No database. No tickets. No context-switching. You point at the problem, describe it in plain English, and AI resolves it — with a 55-law UX audit on every fix.
+In-browser dev feedback that Claude fixes autonomously. No database. No tickets. No context-switching. You point at the problem, describe it in plain English, and AI resolves it -- with a 55-principle UX audit on every fix.
 
 ---
 
@@ -51,7 +51,7 @@ When you submit a redline, `html2canvas` captures the selected element automatic
 
 ### UX Review Built In
 
-Every `/redline fix` automatically runs a UX audit against **55 Laws of UX** — Jon Yablonski's complete framework plus the Steve Jobs Pitch. You can also run `/redline ux-review` standalone on any component. When submitting feedback from the browser, users can request a UX review and the fix will include the full audit automatically.
+Every `/redline fix` automatically runs a UX audit against the **UX Audit Framework** — 54 established principles plus the Steve Jobs Pitch (#55). You can also run `/redline ux-review` standalone on any component. When submitting feedback from the browser, users can request a UX review and the fix will include the full audit automatically.
 
 ---
 
@@ -74,16 +74,16 @@ cp -r redline/commands/redline ~/.claude/commands/
 cp redline/commands/redline.md ~/.claude/commands/
 ```
 
-### 2. Laws of UX Reference
+### 2. UX Audit Framework Reference
 
-The UX review needs the full 55-law reference doc:
+The UX review needs the 55-principle reference doc:
 
 ```bash
 mkdir -p ~/.claude/docs
-cp redline/docs/LAWS_OF_UX.md ~/.claude/docs/
+cp redline/docs/UX_AUDIT_FRAMEWORK.md ~/.claude/docs/
 ```
 
-This is a 94KB document covering all 54 Laws of UX (Yablonski) plus the Steve Jobs Pitch (#55). Claude reads it during every review.
+A compact reference covering 54 established UX/psychology principles plus the Steve Jobs Pitch (#55). Claude reads it during every review.
 
 ### 3. Browser Component (Optional)
 
@@ -274,7 +274,7 @@ Reopened: "Rate column header should be right-aligned" (/agreements/abc123)
 
 ### `/redline ux-review` — Full UX Audit
 
-Run a standalone Laws of UX audit on any component, page, or your recent changes. This is the same review that runs automatically on every fix — but you can trigger it anytime.
+Run a standalone UX Audit Framework review on any component, page, or your recent changes. This is the same review that runs automatically on every fix -- but you can trigger it anytime.
 
 **With a target:**
 
@@ -395,7 +395,7 @@ The system remembers things so you don't have to:
 
 ### The Audit Is Not Optional
 
-Every fix goes through the 55-law UX review. Not because you asked for it — because shipping without it is shipping without quality control. The review catches what humans miss: Fitts' Law violations, Hick's Law overload, missing feedback states, destructive actions without confirmation.
+Every fix goes through the 55-principle UX Audit Framework review. Not because you asked for it — because shipping without it is shipping without quality control. The review catches what humans miss: Fitts' Law violations, Hick's Law overload, missing feedback states, destructive actions without confirmation.
 
 If the audit flags something, the fix is adjusted before it's marked done. The bar isn't "does the change work" — it's "does the change meet the standard."
 
@@ -417,7 +417,7 @@ redline/
 │   ├── redline-sidebar.tsx     # React sidebar component
 │   └── api-route-example.ts    # Next.js API route for read/write
 ├── docs/
-│   └── LAWS_OF_UX.md           # Complete 55-law reference (94KB)
+│   └── UX_AUDIT_FRAMEWORK.md   # 55-principle UX audit reference
 └── README.md
 ```
 

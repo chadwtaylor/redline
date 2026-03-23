@@ -37,7 +37,7 @@ For each redline:
 2. Find the component file using the element_selector (grep for `data-testid` or the CSS path)
 3. Read the relevant code
 4. Apply the fix
-5. Run `/redline:ux-review` on the changed component to validate against Laws of UX — adjust the fix if the review flags issues
+5. Run `/redline:ux-review` on the changed component to validate against the UX Audit Framework — adjust the fix if the review flags issues
 6. Mark as fixed: read `redline/feedback.json`, update the matching entry's `status` to `'fixed'`, write the file back
 
 After all fixes, report what was done.
