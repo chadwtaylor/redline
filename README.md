@@ -16,7 +16,7 @@ Leave as many redlines as you want. Fix them all at once.
 
 ## Features
 
-- **Screenshots** — opt-in on submit, silently captured
+- **Screenshots** — opt-in on submit, captured via `modern-screenshot` (supports Tailwind v4, `oklab()`, modern CSS)
 - **Request UX Audit** — opt-in 55-point audit including the Steve Jobs Pitch
 - **Flat file** — `redline/feedback.json`. No database
 - **Batch fix** — 10 redlines? One command
