@@ -6,6 +6,16 @@ interface RedlineInspectorProps {
   active: boolean
   onDeactivate: () => void
   apiUrl?: string
+  initialMode?: InspectorMode
+}
+
+type InspectorMode = 'element' | 'area'
+
+interface AreaRect {
+  startX: number
+  startY: number
+  endX: number
+  endY: number
 }
 
 function generateSelector(el: HTMLElement): string {
@@ -44,7 +54,16 @@ function generateSelector(el: HTMLElement): string {
   return parts.join(' > ')
 }
 
-export function RedlineInspector({ active, onDeactivate, apiUrl = '/api/redlines' }: RedlineInspectorProps) {
+/** Normalize an AreaRect so top-left is always start */
+function normalizeArea(area: AreaRect): { x: number; y: number; w: number; h: number } {
+  const x = Math.min(area.startX, area.endX)
+  const y = Math.min(area.startY, area.endY)
+  const w = Math.abs(area.endX - area.startX)
+  const h = Math.abs(area.endY - area.startY)
+  return { x, y, w, h }
+}
+
+export function RedlineInspector({ active, onDeactivate, apiUrl = '/api/redlines', initialMode = 'element' }: RedlineInspectorProps) {
   const [hoveredEl, setHoveredEl] = useState<HTMLElement | null>(null)
   const [selectedEl, setSelectedEl] = useState<HTMLElement | null>(null)
   const [feedback, setFeedback] = useState('')
@@ -55,15 +74,51 @@ export function RedlineInspector({ active, onDeactivate, apiUrl = '/api/redlines
   const overlayRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  // Hover tracking
-  useEffect(() => {
-    if (!active || selectedEl) return
+  // Area screenshot mode
+  const [mode, setMode] = useState<InspectorMode>('element')
+  const [dragging, setDragging] = useState(false)
+  const [areaRect, setAreaRect] = useState<AreaRect | null>(null)
+  const [areaComplete, setAreaComplete] = useState(false)
+  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null)
 
-    // Skip elements that are basically full-page wrappers
+  // Refs for drag state — avoids re-attaching event listeners on every mousemove
+  const draggingRef = useRef(false)
+  const areaStartRef = useRef<{ x: number; y: number } | null>(null)
+
+  // Apply initialMode when activated
+  useEffect(() => {
+    if (active) {
+      setMode(initialMode)
+    }
+  }, [active, initialMode])
+
+  // Reset state when deactivated
+  useEffect(() => {
+    if (!active) {
+      setMode('element')
+      setDragging(false)
+      setAreaRect(null)
+      setAreaComplete(false)
+      setMousePos(null)
+      setHoveredEl(null)
+      setSelectedEl(null)
+      draggingRef.current = false
+      areaStartRef.current = null
+    }
+  }, [active])
+
+  // Whether the feedback modal is showing
+  const showingFeedback = !!(selectedEl || areaComplete)
+
+  // ---------------------------------------------------------------------------
+  // Element mode: hover tracking + click to select
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (!active || mode !== 'element' || selectedEl) return
+
     function isInteresting(el: HTMLElement): boolean {
       if (el === document.body || el === document.documentElement) return false
       if (el.closest('[data-redline-ui]')) return false
-      // Skip elements that span nearly the full viewport (layout wrappers)
       const rect = el.getBoundingClientRect()
       const vw = window.innerWidth
       const vh = window.innerHeight
@@ -71,15 +126,10 @@ export function RedlineInspector({ active, onDeactivate, apiUrl = '/api/redlines
       return true
     }
 
-    // Walk up from the deepest element to find the most specific interesting one
     function findBestTarget(x: number, y: number): HTMLElement | null {
       const el = document.elementFromPoint(x, y) as HTMLElement | null
       if (!el) return null
-
-      // If the direct hit is interesting, use it
       if (isInteresting(el)) return el
-
-      // Otherwise walk up to find something interesting
       let current = el.parentElement
       while (current) {
         if (isInteresting(current)) return current
@@ -114,12 +164,117 @@ export function RedlineInspector({ active, onDeactivate, apiUrl = '/api/redlines
       document.removeEventListener('mousemove', handleMove, true)
       document.removeEventListener('click', handleClick, true)
     }
-  }, [active, selectedEl])
+  }, [active, mode, selectedEl])
+
+  // Capture area screenshot
+  const captureArea = useCallback(async (area: AreaRect) => {
+    const { x, y, w, h } = normalizeArea(area)
+    try {
+      const { domToCanvas } = await import('modern-screenshot')
+      const dpr = window.devicePixelRatio || 1
+      const fullCanvas = await domToCanvas(document.documentElement, {
+        backgroundColor: '#1a1a1a',
+        scale: dpr,
+        width: window.innerWidth,
+        height: window.innerHeight,
+      })
+
+      // Crop to selected area
+      const cropCanvas = document.createElement('canvas')
+      cropCanvas.width = w * dpr
+      cropCanvas.height = h * dpr
+      const ctx = cropCanvas.getContext('2d')
+      if (ctx) {
+        ctx.drawImage(
+          fullCanvas,
+          x * dpr, y * dpr, w * dpr, h * dpr,
+          0, 0, w * dpr, h * dpr,
+        )
+      }
+      screenshotCanvasRef.current = cropCanvas
+      setIncludeScreenshot(true)
+      setAreaComplete(true)
+      console.log('[redline] area screenshot captured:', w, 'x', h)
+      setTimeout(() => inputRef.current?.focus(), 50)
+    } catch (err) {
+      console.warn('[redline] area screenshot capture failed:', err)
+      screenshotCanvasRef.current = null
+      // Still show feedback modal even if capture fails
+      setAreaComplete(true)
+      setTimeout(() => inputRef.current?.focus(), 50)
+    }
+  }, [])
+
+  // ---------------------------------------------------------------------------
+  // Area mode: drag to select region
+  // Uses refs for drag state so the effect doesn't re-attach listeners on
+  // every mousemove — only re-runs when mode/active/areaComplete changes.
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (!active || mode !== 'area' || areaComplete) return
+
+    function handleMouseDown(e: MouseEvent) {
+      const el = e.target as HTMLElement
+      if (el.closest('[data-redline-ui]')) return
+      e.preventDefault()
+      e.stopPropagation()
+      draggingRef.current = true
+      areaStartRef.current = { x: e.clientX, y: e.clientY }
+      setDragging(true)
+      setAreaRect({ startX: e.clientX, startY: e.clientY, endX: e.clientX, endY: e.clientY })
+    }
+
+    function handleMouseMove(e: MouseEvent) {
+      setMousePos({ x: e.clientX, y: e.clientY })
+      if (!draggingRef.current || !areaStartRef.current) return
+      setAreaRect({
+        startX: areaStartRef.current.x,
+        startY: areaStartRef.current.y,
+        endX: e.clientX,
+        endY: e.clientY,
+      })
+    }
+
+    function handleMouseUp(e: MouseEvent) {
+      if (!draggingRef.current || !areaStartRef.current) return
+      draggingRef.current = false
+      setDragging(false)
+
+      const finalRect: AreaRect = {
+        startX: areaStartRef.current.x,
+        startY: areaStartRef.current.y,
+        endX: e.clientX,
+        endY: e.clientY,
+      }
+      const { w, h } = normalizeArea(finalRect)
+
+      if (w < 20 || h < 20) {
+        // Too small — accidental click, reset
+        setAreaRect(null)
+        areaStartRef.current = null
+        return
+      }
+
+      setAreaRect(finalRect)
+      areaStartRef.current = null
+      captureArea(finalRect)
+    }
+
+    document.addEventListener('mousedown', handleMouseDown, true)
+    document.addEventListener('mousemove', handleMouseMove, true)
+    document.addEventListener('mouseup', handleMouseUp, true)
+
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown, true)
+      document.removeEventListener('mousemove', handleMouseMove, true)
+      document.removeEventListener('mouseup', handleMouseUp, true)
+    }
+  }, [active, mode, areaComplete, captureArea])
 
   // Silently capture screenshot via html2canvas when element is selected
   useEffect(() => {
     if (!selectedEl) {
-      screenshotCanvasRef.current = null
+      if (!areaComplete) screenshotCanvasRef.current = null
       return
     }
 
@@ -141,43 +296,82 @@ export function RedlineInspector({ active, onDeactivate, apiUrl = '/api/redlines
 
     captureElement()
     setTimeout(() => inputRef.current?.focus(), 50)
-  }, [selectedEl])
+  }, [selectedEl, areaComplete])
 
-  // Escape to cancel
+  // Keyboard: Escape to cancel, 's' to toggle mode
   useEffect(() => {
     if (!active) return
     function handleKey(e: KeyboardEvent) {
+      // Don't intercept keys when typing in the feedback textarea
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === 'TEXTAREA' || tag === 'INPUT') return
+
       if (e.key === 'Escape') {
-        if (selectedEl) {
+        if (areaComplete) {
+          // Cancel area feedback
+          setAreaComplete(false)
+          setAreaRect(null)
+          setFeedback('')
+          setIncludeScreenshot(false)
+          screenshotCanvasRef.current = null
+        } else if (selectedEl) {
           setSelectedEl(null)
           setFeedback('')
+        } else if (dragging) {
+          setDragging(false)
+          setAreaRect(null)
+          draggingRef.current = false
+          areaStartRef.current = null
         } else {
           onDeactivate()
         }
       }
+
+      if (e.key === 's' && !showingFeedback) {
+        e.preventDefault()
+        setMode((prev: InspectorMode) => {
+          const next: InspectorMode = prev === 'element' ? 'area' : 'element'
+          // Clear state from the other mode
+          setHoveredEl(null)
+          setAreaRect(null)
+          setDragging(false)
+          setMousePos(null)
+          return next
+        })
+      }
     }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
-  }, [active, selectedEl, onDeactivate])
+  }, [active, selectedEl, areaComplete, dragging, showingFeedback, onDeactivate])
 
+  // Submit handler — works for both element and area modes
   const handleSubmit = useCallback(async () => {
-    if (!selectedEl || !feedback.trim()) return
+    if (!feedback.trim()) return
+    if (!selectedEl && !areaComplete) return
     setSubmitting(true)
+
+    const isArea = !selectedEl && areaComplete
+    const selectorStr = isArea
+      ? `area-screenshot:${areaRect ? (() => { const { x, y, w, h } = normalizeArea(areaRect); return `${x},${y},${w},${h}` })() : 'unknown'}`
+      : generateSelector(selectedEl!)
+    const elementText = isArea
+      ? null
+      : selectedEl!.textContent?.slice(0, 200) || null
+
     try {
-      // Attach screenshot only when user opted in
       console.log('[redline] submit: includeScreenshot=', includeScreenshot, 'canvasRef=', !!screenshotCanvasRef.current)
       let screenshotBlob: Blob | null = null
       if (includeScreenshot && screenshotCanvasRef.current) {
         screenshotBlob = await new Promise<Blob | null>((resolve) => {
-          screenshotCanvasRef.current!.toBlob((blob) => resolve(blob), 'image/png')
+          screenshotCanvasRef.current!.toBlob((blob: Blob | null) => resolve(blob), 'image/png')
         })
       }
 
       if (screenshotBlob) {
         const formData = new FormData()
         formData.append('page_url', window.location.pathname)
-        formData.append('element_selector', generateSelector(selectedEl))
-        formData.append('element_text', selectedEl.textContent?.slice(0, 200) || '')
+        formData.append('element_selector', selectorStr)
+        formData.append('element_text', elementText || '')
         formData.append('feedback', feedback.trim())
         formData.append('ux_review_requested', String(requestUxReview))
         formData.append('screenshot', screenshotBlob, 'screenshot.png')
@@ -188,8 +382,8 @@ export function RedlineInspector({ active, onDeactivate, apiUrl = '/api/redlines
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             page_url: window.location.pathname,
-            element_selector: generateSelector(selectedEl),
-            element_text: selectedEl.textContent?.slice(0, 200) || null,
+            element_selector: selectorStr,
+            element_text: elementText,
             feedback: feedback.trim(),
             ux_review_requested: requestUxReview,
           }),
@@ -197,75 +391,211 @@ export function RedlineInspector({ active, onDeactivate, apiUrl = '/api/redlines
       }
       window.dispatchEvent(new CustomEvent('redline:submitted'))
       setSelectedEl(null)
+      setAreaComplete(false)
+      setAreaRect(null)
       setFeedback('')
+      setIncludeScreenshot(false)
       onDeactivate()
     } catch {
       // silently fail
     } finally {
       setSubmitting(false)
     }
-  }, [selectedEl, feedback, apiUrl, onDeactivate])
+  }, [selectedEl, areaComplete, areaRect, feedback, includeScreenshot, requestUxReview, apiUrl, onDeactivate])
 
   if (!active) return null
 
-  // Compute highlight rect
+  // Compute element highlight rect
   const targetEl = selectedEl || hoveredEl
-  const rect = targetEl?.getBoundingClientRect()
+  const elRect = targetEl?.getBoundingClientRect()
+
+  // Compute area selection rect for rendering
+  const areaNorm = areaRect ? normalizeArea(areaRect) : null
+
+  // Dimensions tooltip for area drag
+  const dimLabel = areaNorm && dragging ? `${areaNorm.w} × ${areaNorm.h}` : null
 
   return (
     <>
       {/* Cursor overlay */}
       <style>{`
-        ${active && !selectedEl ? '* { cursor: crosshair !important; }' : ''}
+        ${active && !showingFeedback ? '* { cursor: crosshair !important; }' : ''}
       `}</style>
 
-      {/* Highlight overlay */}
-      {rect && targetEl && (
-        <div
-          data-redline-ui
-          ref={overlayRef}
-          style={{
-            position: 'fixed',
-            top: rect.top - 2,
-            left: rect.left - 2,
-            width: rect.width + 4,
-            height: rect.height + 4,
-            border: selectedEl ? '2px solid #ef4444' : '2px dashed #ef4444',
-            backgroundColor: selectedEl ? 'rgba(239, 68, 68, 0.08)' : 'rgba(239, 68, 68, 0.05)',
-            borderRadius: 4,
-            pointerEvents: 'none',
-            zIndex: 99998,
-            transition: 'all 0.1s ease-out',
-          }}
-        />
-      )}
-
-      {/* Element label */}
-      {rect && targetEl && !selectedEl && (
+      {/* Mode indicator pill */}
+      {!showingFeedback && (
         <div
           data-redline-ui
           style={{
             position: 'fixed',
-            top: Math.max(4, rect.top - 24),
-            left: rect.left,
-            backgroundColor: '#ef4444',
-            color: 'white',
-            fontSize: 10,
-            fontFamily: 'monospace',
-            padding: '2px 6px',
-            borderRadius: 3,
+            top: 12,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            backgroundColor: '#1a1a1a',
+            border: '1px solid #333',
+            borderRadius: 8,
+            padding: '6px 14px',
             zIndex: 99999,
-            pointerEvents: 'none',
-            whiteSpace: 'nowrap',
+            fontFamily: 'system-ui, sans-serif',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
           }}
         >
-          {targetEl.tagName.toLowerCase()}
-          {targetEl.getAttribute('data-testid') ? `[${targetEl.getAttribute('data-testid')}]` : ''}
+          <span style={{
+            width: 6,
+            height: 6,
+            borderRadius: '50%',
+            backgroundColor: '#ef4444',
+            animation: 'redline-pulse 2s ease-in-out infinite',
+          }} />
+          <span style={{ color: '#eee', fontSize: 12, fontWeight: 600 }}>
+            {mode === 'element' ? 'Select Element' : 'Area Screenshot'}
+          </span>
+          <span style={{
+            color: '#666',
+            fontSize: 10,
+            marginLeft: 4,
+            padding: '1px 6px',
+            backgroundColor: '#222',
+            borderRadius: 4,
+            border: '1px solid #333',
+          }}>
+            S
+          </span>
+          <span style={{ color: '#555', fontSize: 10 }}>
+            to switch
+          </span>
         </div>
       )}
 
-      {/* Feedback modal */}
-      {selectedEl && rect && (
+      {/* Pulse animation */}
+      <style>{`
+        @keyframes redline-pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+      `}</style>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Element mode overlays                                               */}
+      {/* ------------------------------------------------------------------ */}
+      {mode === 'element' && elRect && targetEl && (
+        <>
+          {/* Highlight overlay */}
+          <div
+            data-redline-ui
+            ref={overlayRef}
+            style={{
+              position: 'fixed',
+              top: elRect.top - 2,
+              left: elRect.left - 2,
+              width: elRect.width + 4,
+              height: elRect.height + 4,
+              border: selectedEl ? '2px solid #ef4444' : '2px dashed #ef4444',
+              backgroundColor: selectedEl ? 'rgba(239, 68, 68, 0.08)' : 'rgba(239, 68, 68, 0.05)',
+              borderRadius: 4,
+              pointerEvents: 'none',
+              zIndex: 99998,
+              transition: 'all 0.1s ease-out',
+            }}
+          />
+
+          {/* Element label */}
+          {!selectedEl && (
+            <div
+              data-redline-ui
+              style={{
+                position: 'fixed',
+                top: Math.max(4, elRect.top - 24),
+                left: elRect.left,
+                backgroundColor: '#ef4444',
+                color: 'white',
+                fontSize: 10,
+                fontFamily: 'monospace',
+                padding: '2px 6px',
+                borderRadius: 3,
+                zIndex: 99999,
+                pointerEvents: 'none',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {targetEl.tagName.toLowerCase()}
+              {targetEl.getAttribute('data-testid') ? `[${targetEl.getAttribute('data-testid')}]` : ''}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Area mode overlays                                                  */}
+      {/* ------------------------------------------------------------------ */}
+      {mode === 'area' && !areaComplete && (
+        <>
+          {/* Dimming overlay — covers full viewport, area selection punches through */}
+          {dragging && areaNorm && (
+            <div
+              data-redline-ui
+              style={{
+                position: 'fixed',
+                inset: 0,
+                backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                zIndex: 99997,
+                pointerEvents: 'none',
+              }}
+            />
+          )}
+
+          {/* Selection rectangle */}
+          {areaNorm && areaNorm.w > 0 && areaNorm.h > 0 && (
+            <div
+              data-redline-ui
+              style={{
+                position: 'fixed',
+                top: areaNorm.y,
+                left: areaNorm.x,
+                width: areaNorm.w,
+                height: areaNorm.h,
+                border: '2px solid #ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                zIndex: 99998,
+                pointerEvents: 'none',
+                boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.4)',
+              }}
+            />
+          )}
+
+          {/* Dimensions tooltip */}
+          {dimLabel && mousePos && (
+            <div
+              data-redline-ui
+              style={{
+                position: 'fixed',
+                top: mousePos.y + 20,
+                left: mousePos.x + 14,
+                backgroundColor: '#ef4444',
+                color: 'white',
+                fontSize: 11,
+                fontFamily: 'monospace',
+                fontWeight: 600,
+                padding: '3px 8px',
+                borderRadius: 4,
+                zIndex: 99999,
+                pointerEvents: 'none',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {dimLabel}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Feedback modal (shared between element + area modes)                */}
+      {/* ------------------------------------------------------------------ */}
+      {showingFeedback && (
         <div
           data-redline-ui
           style={{
@@ -280,7 +610,10 @@ export function RedlineInspector({ active, onDeactivate, apiUrl = '/api/redlines
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setSelectedEl(null)
+              setAreaComplete(false)
+              setAreaRect(null)
               setFeedback('')
+              setIncludeScreenshot(false)
             }
           }}
         >
@@ -297,23 +630,67 @@ export function RedlineInspector({ active, onDeactivate, apiUrl = '/api/redlines
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ color: '#ef4444', fontSize: 13, fontWeight: 600 }}>Redline Feedback</span>
+              <span style={{ color: '#ef4444', fontSize: 13, fontWeight: 600 }}>
+                {areaComplete ? 'Area Feedback' : 'Redline Feedback'}
+              </span>
               <button
                 data-redline-ui
-                onClick={() => { setSelectedEl(null); setFeedback('') }}
+                onClick={() => {
+                  setSelectedEl(null)
+                  setAreaComplete(false)
+                  setAreaRect(null)
+                  setFeedback('')
+                  setIncludeScreenshot(false)
+                }}
                 style={{ color: '#666', fontSize: 18, background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}
               >
                 &times;
               </button>
             </div>
 
-            <div style={{ fontSize: 11, color: '#888', marginBottom: 8, fontFamily: 'monospace', padding: '6px 8px', backgroundColor: '#111', borderRadius: 6, wordBreak: 'break-all' }}>
-              {generateSelector(selectedEl)}
-            </div>
+            {/* Element selector (element mode) */}
+            {selectedEl && (
+              <>
+                <div style={{ fontSize: 11, color: '#888', marginBottom: 8, fontFamily: 'monospace', padding: '6px 8px', backgroundColor: '#111', borderRadius: 6, wordBreak: 'break-all' }}>
+                  {generateSelector(selectedEl)}
+                </div>
+                {selectedEl.textContent && (
+                  <div style={{ fontSize: 11, color: '#aaa', marginBottom: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    &ldquo;{selectedEl.textContent.slice(0, 80)}&rdquo;
+                  </div>
+                )}
+              </>
+            )}
 
-            {selectedEl.textContent && (
-              <div style={{ fontSize: 11, color: '#aaa', marginBottom: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                "{selectedEl.textContent.slice(0, 80)}"
+            {/* Area info (area mode) */}
+            {areaComplete && areaNorm && (
+              <div style={{ fontSize: 11, color: '#888', marginBottom: 8, fontFamily: 'monospace', padding: '6px 8px', backgroundColor: '#111', borderRadius: 6 }}>
+                area: {areaNorm.w} &times; {areaNorm.h}px at ({areaNorm.x}, {areaNorm.y})
+              </div>
+            )}
+
+            {/* Screenshot preview (area mode) */}
+            {areaComplete && screenshotCanvasRef.current && (
+              <div style={{ marginBottom: 12, borderRadius: 6, overflow: 'hidden', border: '1px solid #333' }}>
+                <canvas
+                  ref={(el) => {
+                    if (el && screenshotCanvasRef.current) {
+                      const ctx = el.getContext('2d')
+                      const src = screenshotCanvasRef.current
+                      // Scale down to fit modal width (~360px)
+                      const maxW = 360
+                      const scale = Math.min(1, maxW / (src.width / (window.devicePixelRatio || 1)))
+                      el.width = src.width * scale
+                      el.height = src.height * scale
+                      el.style.width = '100%'
+                      el.style.height = 'auto'
+                      if (ctx) {
+                        ctx.drawImage(src, 0, 0, el.width, el.height)
+                      }
+                    }
+                  }}
+                  data-redline-ui
+                />
               </div>
             )}
 
@@ -338,7 +715,6 @@ export function RedlineInspector({ active, onDeactivate, apiUrl = '/api/redlines
                 fontFamily: 'inherit',
               }}
             />
-
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
               <label
@@ -372,7 +748,13 @@ export function RedlineInspector({ active, onDeactivate, apiUrl = '/api/redlines
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
               <button
                 data-redline-ui
-                onClick={() => { setSelectedEl(null); setFeedback('') }}
+                onClick={() => {
+                  setSelectedEl(null)
+                  setAreaComplete(false)
+                  setAreaRect(null)
+                  setFeedback('')
+                  setIncludeScreenshot(false)
+                }}
                 style={{ padding: '6px 14px', fontSize: 12, borderRadius: 6, border: '1px solid #333', backgroundColor: 'transparent', color: '#aaa', cursor: 'pointer' }}
               >
                 Cancel
