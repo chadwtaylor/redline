@@ -1,7 +1,7 @@
 ---
 name: redline
 description: Manage in-app dev feedback (redlines). Routes to check/fix/clear/defer/ux-review or defaults to check.
-argument-hint: "<check|fix|clear|defer|ux-review>"
+argument-hint: "<check|fix|clear|defer|ux-review|update>"
 allowed-tools:
   - Bash
   - Read
@@ -19,6 +19,7 @@ Route to the appropriate redline subcommand based on the argument:
 - `clear` → run `/redline:clear`
 - `defer` → run `/redline:defer`
 - `ux-review` → run `/redline:ux-review`
+- `update` → run `/redline:update`
 
 Storage: `redline/feedback.json` in the project root — a JSON array of redline objects.
 

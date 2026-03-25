@@ -172,14 +172,15 @@ export function RedlineInspector({ active, onDeactivate, apiUrl = '/api/redlines
     try {
       const { domToCanvas } = await import('modern-screenshot')
       const dpr = window.devicePixelRatio || 1
+      const scrollX = window.scrollX
+      const scrollY = window.scrollY
       const fullCanvas = await domToCanvas(document.documentElement, {
         backgroundColor: '#1a1a1a',
         scale: dpr,
-        width: window.innerWidth,
-        height: window.innerHeight,
       })
 
-      // Crop to selected area
+      // Crop to selected area — clientX/Y are viewport-relative, so add scroll
+      // offset to map to the correct position in the full-document canvas
       const cropCanvas = document.createElement('canvas')
       cropCanvas.width = w * dpr
       cropCanvas.height = h * dpr
@@ -187,7 +188,7 @@ export function RedlineInspector({ active, onDeactivate, apiUrl = '/api/redlines
       if (ctx) {
         ctx.drawImage(
           fullCanvas,
-          x * dpr, y * dpr, w * dpr, h * dpr,
+          (x + scrollX) * dpr, (y + scrollY) * dpr, w * dpr, h * dpr,
           0, 0, w * dpr, h * dpr,
         )
       }
