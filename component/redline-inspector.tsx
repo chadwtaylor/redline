@@ -534,6 +534,18 @@ export function RedlineInspector({ active, onDeactivate, apiUrl = '/api/redlines
       {/* ------------------------------------------------------------------ */}
       {mode === 'area' && !areaComplete && (
         <>
+          {/* Interaction overlay — captures all mouse events so page elements
+              (dropdowns, menus, etc.) don't receive mousedown/blur and stay open */}
+          <div
+            data-redline-ui
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 99996,
+              cursor: 'crosshair',
+            }}
+          />
+
           {/* Dimming overlay — covers full viewport, area selection punches through */}
           {dragging && areaNorm && (
             <div
