@@ -36,7 +36,7 @@ const child = spawn(process.execPath, ['-e', `
   } catch (e) {}
 
   // Fetch latest version from GitHub raw
-  const url = 'https://raw.githubusercontent.com/chadwtaylor/redline/main/VERSION';
+  const url = 'https://raw.githubusercontent.com/true-north-stack/redline/main/VERSION';
   https.get(url, { timeout: 10000 }, (res) => {
     let data = '';
     res.on('data', chunk => data += chunk);

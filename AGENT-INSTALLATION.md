@@ -5,9 +5,9 @@ Copy the prompt below and paste it into [Claude Code](https://docs.anthropic.com
 ---
 
 ```
-Install Redline from github.com/chadwtaylor/redline into this project:
+Install Redline from github.com/true-north-stack/redline into this project:
 
-1. Clone https://github.com/chadwtaylor/redline.git to /tmp/redline
+1. Clone https://github.com/true-north-stack/redline.git to /tmp/redline
 2. Copy /tmp/redline/commands/redline.md to ~/.claude/commands/redline.md
 3. Copy /tmp/redline/commands/redline/ directory to ~/.claude/commands/redline/
 4. Copy /tmp/redline/VERSION to ~/.claude/commands/redline/VERSION

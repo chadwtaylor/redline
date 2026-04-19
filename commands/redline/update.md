@@ -11,7 +11,7 @@ allowed-tools:
 
 # Redline Update
 
-Update Redline from the GitHub repository (github.com/chadwtaylor/redline).
+Update Redline from the GitHub repository (github.com/true-north-stack/redline).
 
 ## Step 1: Check versions
 
@@ -22,7 +22,7 @@ cat ~/.claude/commands/redline/VERSION 2>/dev/null || echo "0.0.0"
 
 Fetch the latest version from GitHub:
 ```bash
-curl -sL https://raw.githubusercontent.com/chadwtaylor/redline/main/VERSION
+curl -sL https://raw.githubusercontent.com/true-north-stack/redline/main/VERSION
 ```
 
 **If installed == latest:**
@@ -40,7 +40,7 @@ Exit.
 
 Fetch the CHANGELOG from GitHub:
 ```bash
-curl -sL https://raw.githubusercontent.com/chadwtaylor/redline/main/CHANGELOG.md
+curl -sL https://raw.githubusercontent.com/true-north-stack/redline/main/CHANGELOG.md
 ```
 
 Display changes between installed and latest versions. If no CHANGELOG exists yet, just show the version diff.
@@ -71,7 +71,7 @@ If cancelled, exit.
 
 ```bash
 # Clone latest to temp directory
-rm -rf /tmp/redline && git clone https://github.com/chadwtaylor/redline.git /tmp/redline
+rm -rf /tmp/redline && git clone https://github.com/true-north-stack/redline.git /tmp/redline
 ```
 
 Copy updated files:
@@ -122,5 +122,5 @@ If component files have changes in the new version, add:
 ```
 Component files have been updated upstream. To update your project's components:
 - Re-run the install prompt from AGENT-INSTALLATION.md, or
-- Manually copy from github.com/chadwtaylor/redline/component/
+- Manually copy from github.com/true-north-stack/redline/component/
 ```
